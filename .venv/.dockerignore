@@ -1,0 +1,19 @@
+# Ignorar carpeta de entorno virtual (Docker instalará sus propias librerías)
+.venv/
+venv/
+env/
+
+# Ignorar la historia de Git
+.git/
+.gitignore
+
+# Ignorar archivos de configuración del IDE
+.idea/
+.vscode/
+
+# Ignorar datos generados localmente (para que la imagen nazca limpia)
+data/*.xlsx
+
+# Ignorar caché de Python
+__pycache__/
+*.pyc
