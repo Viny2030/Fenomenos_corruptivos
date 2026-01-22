@@ -22,12 +22,13 @@ REGLAS_CLASIFICACION = {
         "adjudicación",
         "licitación pública nacional e internacional",
     ],
-    "Obra Pública / Contratos": [
+    "Contratos Públicos": [
         "obra pública",
         "redeterminación de precios",
         "contratación directa",
         "ajuste de contrato",
         "continuidad de obra",
+        "compra directa",
     ],
     "Tarifas Servicios Públicos": [
         "cuadro tarifario",
@@ -36,19 +37,23 @@ REGLAS_CLASIFICACION = {
         "ente regulador",
         "precio mayorista",
         "peaje",
+        "transporte de energía",
     ],
-    "Compensación por Devaluación": [
+    "Autorizaciones de Precios": [
         "compensación cambiaria",
         "diferencia de cambio",
-        "bono fiscal",
-        "subsidio extraordinario",
+        "precio máximo",
+        "secretaría de comercio",
+        "ajuste de precio",
+        "valores de referencia",
     ],
-    "Servicios Privados (Salud/Educación)": [
+    "Precios Sector Privado (Salud/Educación)": [
         "medicina prepaga",
         "cuota colegio",
         "arancel educativo",
         "superintendencia de servicios de salud",
         "autorízase aumento",
+        "instituciones de enseñanza pública de gestión privada",
     ],
     "Jubilaciones / Pensiones": [
         "movilidad jubilatoria",
@@ -56,12 +61,15 @@ REGLAS_CLASIFICACION = {
         "anses",
         "índice de actualización",
         "bono previsional",
+        "sistema integrado previsional argentino",
     ],
-    "Traslado Impositivo": [
+    "Traslado de Impuestos": [
         "traslado a precios",
         "incidencia impositiva",
         "impuesto al consumo",
         "tasas y contribuciones",
+        "percepción impositiva",
+        "regimen de retención",
     ],
 }
 
@@ -85,7 +93,7 @@ MATRIZ_TEORICA = {
         "certeza_nivel": "Alta",
         "puntos_certeza": 30,
     },
-    "Obra Pública / Contratos": {
+    "Contratos Públicos": {
         "origen": "Contribuyentes (Impuestos Futuros)",
         "destino": "Empresas Contratistas",
         "mecanismo": "Sobreprecios o continuación ineficiente",
@@ -99,14 +107,14 @@ MATRIZ_TEORICA = {
         "certeza_nivel": "Muy Alta",
         "puntos_certeza": 40,
     },
-    "Compensación por Devaluación": {
-        "origen": "Tesoro Nacional (Población)",
-        "destino": "Empresas Endeudadas",
-        "mecanismo": "Licuación de pasivos privados",
+    "Autorizaciones de Precios": {
+        "origen": "Tesoro Nacional / Consumidor",
+        "destino": "Sectores Regulados",
+        "mecanismo": "Validación estatal de aumentos o subsidios",
         "certeza_nivel": "Alta",
         "puntos_certeza": 30,
     },
-    "Servicios Privados (Salud/Educación)": {
+    "Precios Sector Privado (Salud/Educación)": {
         "origen": "Salario de los Trabajadores",
         "destino": "Empresas de Salud/Educación",
         "mecanismo": "Autorización de aumento por encima de inflación",
@@ -120,7 +128,7 @@ MATRIZ_TEORICA = {
         "certeza_nivel": "Muy Alta",
         "puntos_certeza": 40,
     },
-    "Traslado Impositivo": {
+    "Traslado de Impuestos": {
         "origen": "Consumidor Final",
         "destino": "Estado / Empresas",
         "mecanismo": "Traslado de carga fiscal (Doble imposición)",
@@ -217,7 +225,6 @@ def desglosar_indice(row):
     datos_teoricos = MATRIZ_TEORICA.get(row["tipo_decision"])
     p_certeza = datos_teoricos["puntos_certeza"] if datos_teoricos else 0
     total = p_legal + p_discrecional + p_certeza
-    certeza_txt = datos_teoricos["certeza_nivel"] if datos_teoricos else "Nula"
 
     return pd.Series(
         {
@@ -237,7 +244,7 @@ def desglosar_indice(row):
 
 def analizar_boletin(df):
     """
-    Recibe el DataFrame crudo, lo CLASIFICA (si hace falta), limpia, audita y enriquece.
+    Recibe el DataFrame crudo, lo CLASIFICA, limpia, audita y enriquece.
     """
     if df.empty:
         return df, None, pd.DataFrame()
@@ -245,8 +252,7 @@ def analizar_boletin(df):
     # PASO 1: Curado de Datos
     df["detalle"] = df["detalle"].apply(limpiar_texto_curado)
 
-    # PASO 2: Clasificación Robusta (CORRECCIÓN CRÍTICA PARA TEST)
-    # Si el robot no lo clasificó (o viene del test como 'No identificado'), lo clasificamos ahora.
+    # PASO 2: Clasificación Robusta
     if "tipo_decision" not in df.columns:
         df["tipo_decision"] = "No identificado"
 
@@ -272,17 +278,38 @@ def analizar_boletin(df):
     df["evidencia_xai"] = df.apply(recuperar_evidencia_xai, axis=1)
     df["auditoria_estado"] = df.apply(flag_revision_humana, axis=1)
 
-    # PASO 6: Generación de Tablas (Glosario y Marco Teórico)
+    # PASO 6: Generación de Tablas (Glosario y Marco Teórico Actualizado)
+
+    desc_tipos = (
+        "7 Tipos: 1.Privatizaciones/Concesiones, 2.Contratos Públicos, "
+        "3.Tarifas, 4.Autorizaciones de Precios, 5.Precios Sector Privado, "
+        "6.Jubilaciones/Pensiones, 7.Traslado de Impuestos."
+    )
+
+    desc_evidencia = (
+        "Elemento textual (keyword) detectado en la norma que fundamenta "
+        "su clasificación dentro de uno de los 7 fenómenos teóricos."
+    )
+
+    # Definición de la fórmula del índice y su consecuencia
+    desc_formula = (
+        "Fórmula: Leg(30) + Dis(30) + Cert(25-40). "
+        "Suma Legalidad, Discrecionalidad y Certeza Teórica. "
+        "Consecuencia: Un valor alto confirma que el acto, aunque legal, transfiere riqueza."
+    )
+
     glosario_data = [
         {"Columna": "fecha", "Descripción": "Fecha publicación B.O."},
-        {"Columna": "tipo_decision", "Descripción": "Clasificación teórica."},
-        {"Columna": "evidencia_xai", "Descripción": "[XAI] Palabra clave exacta."},
+        {"Columna": "tipo_decision", "Descripción": desc_tipos},
+        {"Columna": "evidencia_xai", "Descripción": desc_evidencia},
         {
             "Columna": "auditoria_estado",
             "Descripción": "[Control] Alerta de revisión humana.",
         },
-        {"Columna": "indice_total", "Descripción": "Intensidad (0-100%)."},
-        {"Columna": "detalle", "Descripción": "Texto de la norma."},
+        {"Columna": "indice_total", "Descripción": "Intensidad del riesgo (0-100%)."},
+        {"Columna": "detalle", "Descripción": "Texto completo de la norma."},
+        # NUEVA COLUMNA AGREGADA
+        {"Columna": "elaboracion_indice", "Descripción": desc_formula},
     ]
     df_glosario = pd.DataFrame(glosario_data)
 
@@ -324,7 +351,7 @@ def analizar_boletin(df):
         with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
             df_final.to_excel(writer, index=False, sheet_name="Analisis")
 
-            # Formateo
+            # Formateo visual del Excel
             ws = writer.sheets["Analisis"]
             ws.column_dimensions["D"].width = 25
             ws.column_dimensions["E"].width = 25
