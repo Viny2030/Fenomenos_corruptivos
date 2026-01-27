@@ -114,3 +114,13 @@ Este proyecto es parte de una investigación personal, basada en el artículo:
 - **link**: Auditoría manual de la norma.
 
 [Ver artículo en Emerald Insight](https://www.emerald.com/jfc/article-abstract/28/2/580/224032/Great-corruption-theory-of-corrupt-phenomena)
+
+# 1. Clonar el repositorio
+git clone https://github.com/Viny2030/Fenomenos_corruptivos.git
+cd Fenomenos_corruptivos
+
+# 2. Construir la imagen
+docker build -t fenomenos_corruptivos:v3_robusta .
+
+# 3. Ejecutar el contenedor
+docker run -d -p 8502:8501 -v "${PWD}/data:/app/data" fenomenos_corruptivos:v3_robusta
