@@ -2,8 +2,9 @@ name: Monitor Diario BORA
 
 on:
   schedule:
+    # Corre a las 10:00 UTC (07:00 AM en Argentina)
     - cron: '0 10 * * *'
-  workflow_dispatch:
+  workflow_dispatch: # Permite ejecución manual desde la pestaña Actions
 
 permissions:
   contents: write
@@ -28,10 +29,15 @@ jobs:
       - name: Ejecutar Robot
         run: python diario.py
 
+      - name: Listar archivos (Debug)
+        # Este paso nos permitirá ver en los logs si el archivo del 28 realmente se creó
+        run: ls -R
+
       - name: Guardar Reporte (Commit & Push)
         run: |
           git config --global user.name 'Robot Monitor'
           git config --global user.email 'robot@noreply.github.com'
           git add .
+          # El commit solo se hace si hay archivos nuevos; si no, el flujo termina sin error
           git commit -m "Reporte Automático: $(date +'%Y-%m-%d')" || exit 0
           git push
